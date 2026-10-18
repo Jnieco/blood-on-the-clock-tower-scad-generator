@@ -42,3 +42,6 @@ venv
 .vscode/*
 !.vscode/extensions.json
 !.vscode/settings.json
+
+# Personal notes for Claude Code (environment, hardware, workflow). Kept local.
+CLAUDE.md
