@@ -1,0 +1,41 @@
+{
+  "_comment": [
+    "Copy this file to scripts.json and edit it. It maps a script/edition name",
+    "to the roles it contains, which lets you:",
+    "",
+    "  uv run python solid_maker.py --script \"Trouble Brewing\"",
+    "  uv run python make_print_checklist.py --script \"Trouble Brewing\"",
+    "",
+    "Role names are matched loosely, so \"Snake Charmer\", \"snakecharmer\" and",
+    "\"Snake_Charmer\" all refer to the same role. A role may appear on several",
+    "scripts. Names not present in roles.json or custom_roles.json are skipped",
+    "with a warning. Keys starting with _ are ignored.",
+    "",
+    "import_script.py adds scripts here for you from the official script tool."
+  ],
+  "Trouble Brewing": [
+    "Washerwoman",
+    "Librarian",
+    "Investigator",
+    "Chef",
+    "Empath",
+    "Fortune Teller",
+    "Undertaker",
+    "Monk",
+    "Ravenkeeper",
+    "Virgin",
+    "Slayer",
+    "Soldier",
+    "Mayor",
+    "Butler",
+    "Drunk",
+    "Recluse",
+    "Saint",
+    "Poisoner",
+    "Spy",
+    "Scarlet Woman",
+    "Baron",
+    "Imp"
+  ],
+  "House Homebrew": ["Lantern Keeper", "Night Order"]
+}

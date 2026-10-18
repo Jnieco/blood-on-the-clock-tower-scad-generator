@@ -1,0 +1,31 @@
+{
+  "_comment": [
+    "Copy this file to custom_roles.json and edit it. It uses the same schema as",
+    "roles.json and is merged last, so an entry can add a homebrew character or",
+    "replace an official one (for example to swap in your own art).",
+    "",
+    "  image            - a URL, or a local PNG path relative to this file.",
+    "                     Leave it out for a text-only token.",
+    "  color            - blue / red / purple / yellow / green, or any #RRGGBB.",
+    "  reminders        - reminder token labels (optional, default []).",
+    "  remindersGlobal  - global reminder labels (optional, default []).",
+    "",
+    "Keys starting with _ are ignored. \"_Beacon\" below shows a role with local",
+    "art: put your PNG at custom_art/beacon.png, then rename the key to \"Beacon\".",
+    "A local image that does not exist stops the build with an error."
+  ],
+  "_Beacon": {
+    "image": "custom_art/beacon.png",
+    "color": "blue",
+    "reminders": ["Watched"],
+    "remindersGlobal": []
+  },
+  "Night Order": {
+    "color": "#FF8800",
+    "reminders": ["First night", "Other nights"]
+  },
+  "Lantern Keeper": {
+    "color": "blue",
+    "reminders": ["Lit"]
+  }
+}

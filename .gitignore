@@ -1,8 +1,44 @@
+# Generated token output
+pngs
 grey_pngs
 svgs
-pngs
 scads
 stls
-.idea
-.venv
+3mf
+plates
+holder
+contact_sheet.png
+shakedown_contact.png
+.build_cache.json
+
+# Your own data and progress. The *.example.json files are the tracked templates.
 roles.json
+custom_roles.json
+scripts.json
+settings.json
+extra_reminders.json
+*.xlsx
+# Script files downloaded from the script tool, imported with import_script.py.
+Catfishing.json
+
+# PyInstaller (build_exe.py)
+build/
+dist/
+*.spec
+
+# Python / tooling
+__pycache__/
+*.py[cod]
+.pytest_cache
+.ruff_cache
+.venv
+venv
+
+# uv
+# uv.lock IS committed on purpose (reproducible installs); do not ignore it.
+
+# Editors
+.idea
+.vscode/*
+!.vscode/extensions.json
+!.vscode/settings.json

@@ -1,28 +1,82 @@
-name: Python CI
+name: CI
 
 on:
   push:
-    branches: [ main ]
+    branches: [main]
   pull_request:
-    branches: [ main ]
+    branches: [main]
 
 jobs:
   test:
+    name: test (${{ matrix.os }})
+    # Windows is the whole point of this pass, so it is a first-class CI target.
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [ubuntu-latest, windows-latest]
+    runs-on: ${{ matrix.os }}
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Install uv
+        uses: astral-sh/setup-uv@v5
+        with:
+          python-version: "3.12"
+
+      - name: Install dependencies
+        run: uv sync --dev
+
+      - name: Lint with ruff
+        run: |
+          uv run ruff check .
+          uv run ruff format --check .
+
+      - name: Test with pytest
+        run: uv run pytest
+
+  render:
+    # Separate job that installs OpenSCAD and actually renders a token, so a
+    # broken SCAD header or geometry change is caught, not just Python errors.
+    name: render smoke test
     runs-on: ubuntu-latest
     steps:
-    - uses: actions/checkout@v3
-    - name: Set up Python
-      uses: actions/setup-python@v4
-      with:
-        python-version: '3.10'
-    - name: Install dependencies
-      run: |
-        python -m pip install --upgrade pip
-        pip install -r requirements.txt
-        pip install pytest ruff
-    - name: Check formatting with ruff
-      run: |
-        ruff format .
-    - name: Test with pytest
-      run: |
-        pytest
+      - uses: actions/checkout@v4
+
+      - name: Install uv
+        uses: astral-sh/setup-uv@v5
+        with:
+          python-version: "3.12"
+
+      - name: Install OpenSCAD
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y openscad xvfb
+
+      - name: Install dependencies
+        run: uv sync --dev
+
+      - name: Render one token to SCAD and STL
+        run: |
+          uv run python - <<'PY'
+          import json
+          from PIL import Image, ImageDraw
+
+          # Minimal art + roles.json so the render does not hit the network.
+          Image.new("RGBA", (200, 200), (255, 255, 255, 0)).save("_ci.png")
+          d = ImageDraw.Draw(Image.open("_ci.png"))
+          import os
+          os.makedirs("pngs", exist_ok=True)
+          img = Image.new("RGBA", (200, 200), (255, 255, 255, 0))
+          ImageDraw.Draw(img).ellipse([50, 50, 150, 150], fill=(0, 0, 0, 255))
+          img.save("pngs/Poisoner.png")
+          json.dump(
+              {"Poisoner": {"image": "local", "color": "red",
+                            "reminders": ["Poisoned"], "remindersGlobal": []}},
+              open("roles.json", "w"),
+          )
+          PY
+          xvfb-run -a uv run python solid_maker.py --only Poisoner
+          test -f stls/red_Poisoner_Poisoned_reminder.stl
+          test -f stls/red_Poisoner_coin_overlay.stl
+          echo "Render smoke test passed."
