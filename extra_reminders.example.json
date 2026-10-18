@@ -1,0 +1,14 @@
+{
+  "_comment": [
+    "Copy this file to extra_reminders.json and edit it. Each key is a role name",
+    "(matched loosely, so \"Fortune Teller\" = \"fortuneteller\") and each value is",
+    "a list of reminder labels added on top of whatever the role already has.",
+    "A label the role already has is not duplicated. Works for official and",
+    "custom roles alike. Keys starting with _ are ignored.",
+    "",
+    "The GUI's Checklist tab has an \"Add reminder...\" button that edits this",
+    "file for you."
+  ],
+  "Harpy": ["Mad", "2nd Mad"],
+  "Lantern Keeper": ["Snuffed"]
+}
