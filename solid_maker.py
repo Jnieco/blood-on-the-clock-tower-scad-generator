@@ -18,6 +18,7 @@ from __future__ import annotations
 import argparse
 import difflib
 import hashlib
+import io
 import json
 import math
 import os
@@ -485,6 +486,23 @@ def _reference_font():
     return ImageFont.truetype(str(FONT_FILE), _REFERENCE_FONT_PX)
 
 
+def scad_text(value, **kwargs):
+    """OpenSCAD text() with the string safely escaped.
+
+    SolidPython writes strings into the .scad file verbatim, so a role name or
+    reminder containing a double quote would end the string early and the rest
+    would run as OpenSCAD code (e.g. an import() of some local file). Names come
+    from scraped wiki data and from other people's script files, so they are
+    not trusted. Ordinary names have nothing to escape, so their .scad output
+    -- and the build cache keyed on it -- is unchanged.
+    """
+    escaped = str(value).replace("\\", "\\\\").replace('"', '\\"')
+    # A raw line break or other control character has no business on a token
+    # and would also split the SCAD string, so drop them.
+    escaped = "".join(ch for ch in escaped if ch.isprintable())
+    return text(escaped, **kwargs)
+
+
 def _text_width_mm(line: str, size_mm: float) -> float:
     """Advance width of `line`, in mm, when rendered at `size_mm`.
 
@@ -678,7 +696,7 @@ def role_overlay_model(role_name, svg_filename):
         x = radius * math.cos(math.radians(char_angle))
         y = radius * math.sin(math.radians(char_angle))
 
-        character = text(
+        character = scad_text(
             char,
             font=FONT,
             size=TEXT_SIZE,
@@ -815,7 +833,7 @@ def reminder_overlay_model(reminder_label, svg_filename):
         profile_parts.append(translate((0, icon_center_y, 0))(icon))
 
     for index, line in enumerate(reversed(lines)):
-        glyphs = text(
+        glyphs = scad_text(
             line,
             font=FONT,
             size=size,
@@ -903,7 +921,9 @@ def choose_a_overlay_model(label):
 
     profile_parts = []
     for index, line in enumerate(reversed(lines)):
-        glyphs = text(line, font=FONT, size=size, halign="center", valign="baseline")
+        glyphs = scad_text(
+            line, font=FONT, size=size, halign="center", valign="baseline"
+        )
         profile_parts.append(
             translate(
                 (0, reminder_baseline_y(index, size, layout_diameter) + text_shift_y, 0)
@@ -947,15 +967,39 @@ def build_choose_token(
 # --------------------------------------------------------------------------
 # Image pipeline
 # --------------------------------------------------------------------------
+# Role art is a few hundred KB. The cap stops a bad or hostile URL (homebrew
+# characters in a downloaded script file carry their own image link) from
+# filling the disk or memory.
+MAX_ART_DOWNLOAD_BYTES = 20 * 1024 * 1024
+
+
 def download_png(url, filename):
-    """Download a PNG from `url` and save it to `filename`."""
-    response = requests.get(url, timeout=30)
-    if response.status_code == 200:
-        with open(filename, "wb") as handle:
-            handle.write(response.content)
-        print(f"Downloaded {filename}")
-    else:
-        raise RuntimeError(f"Failed to download {url}")
+    """Download role art from `url` and save it to `filename`.
+
+    Only http(s) is fetched, the body is size-capped, and it must decode as an
+    image before anything is written, so a wrong or malicious link fails here
+    with a clear message instead of landing on disk and confusing the tracer.
+    """
+    if not _looks_like_url(str(url)):
+        raise RuntimeError(f"Refusing to download non-http(s) art URL: {url}")
+    response = requests.get(url, timeout=30, stream=True)
+    if response.status_code != 200:
+        raise RuntimeError(f"Failed to download {url} (HTTP {response.status_code})")
+    body = bytearray()
+    for chunk in response.iter_content(chunk_size=64 * 1024):
+        body.extend(chunk)
+        if len(body) > MAX_ART_DOWNLOAD_BYTES:
+            raise RuntimeError(
+                f"Art at {url} is over {MAX_ART_DOWNLOAD_BYTES // (1024 * 1024)} MB; "
+                "refusing to download it."
+            )
+    try:
+        with Image.open(io.BytesIO(body)) as image:
+            image.verify()
+    except Exception as error:  # Pillow raises many types for bad data
+        raise RuntimeError(f"{url} did not return a valid image: {error}") from error
+    Path(filename).write_bytes(bytes(body))
+    print(f"Downloaded {filename}")
 
 
 def convert_png_to_greyscale_png(png_path, greyscale_png_path):

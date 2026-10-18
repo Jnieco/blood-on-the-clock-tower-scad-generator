@@ -1093,9 +1093,25 @@ class App(tk.Tk):
         self._run(command)
 
 
+# The only modules --run-tool may start. Without a fixed list, the packaged exe
+# would import whatever module name it was handed on the command line.
+RUNNABLE_TOOLS = frozenset(
+    {
+        "solid_maker",
+        "make_print_checklist",
+        "import_script",
+        "make_plates",
+        "make_contact_sheet",
+        "art_preflight",
+    }
+)
+
+
 def main():
     # Packaged builds re-run themselves to execute a tool; see tool_command().
     if len(sys.argv) > 2 and sys.argv[1] == "--run-tool":
+        if sys.argv[2] not in RUNNABLE_TOOLS:
+            sys.exit(f"Unknown tool {sys.argv[2]!r}.")
         module = importlib.import_module(sys.argv[2])
         sys.exit(module.main(sys.argv[3:]) or 0)
     App().mainloop()

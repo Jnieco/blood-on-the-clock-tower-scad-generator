@@ -149,6 +149,35 @@ def test_packaged_dispatch_runs_the_named_tool(monkeypatch):
     assert excinfo.value.code == 0
 
 
+def test_packaged_dispatch_refuses_unknown_modules(monkeypatch):
+    imported = []
+    monkeypatch.setattr(botc_gui.importlib, "import_module", imported.append)
+    monkeypatch.setattr(botc_gui.sys, "argv", ["BOTC.exe", "--run-tool", "os"])
+
+    with pytest.raises(SystemExit) as excinfo:
+        botc_gui.main()
+
+    assert imported == []  # never imported, let alone run
+    assert "Unknown tool" in str(excinfo.value.code)
+
+
+def test_every_gui_tool_is_runnable_when_packaged():
+    """The allowlist must cover every tool the GUI shells out to."""
+    from pathlib import Path
+
+    commands = [
+        botc_gui.build_generate_command(),
+        botc_gui.build_checklist_command(),
+        botc_gui.build_plates_command(),
+        botc_gui.build_import_command([]),
+        botc_gui.build_contact_sheet_command(),
+        botc_gui.build_preflight_command(),
+    ]
+    # Unpackaged commands are [python, -u, path/to/tool.py, ...].
+    used = {Path(command[2]).stem for command in commands}
+    assert used <= botc_gui.RUNNABLE_TOOLS
+
+
 def test_plates_command_defaults_to_every_colour():
     from botc_gui import build_plates_command
 
