@@ -97,15 +97,84 @@ def test_trace_captures_the_shape_not_the_background(icon_image_path, tmp_path):
     assert min(ys) > 20 and max(ys) < 180
 
 
+def _png_bytes():
+    import io
+
+    from PIL import Image
+
+    buffer = io.BytesIO()
+    Image.new("RGBA", (4, 4)).save(buffer, format="PNG")
+    return buffer.getvalue()
+
+
+def _response(body, status=200):
+    return MagicMock(status_code=status, iter_content=lambda chunk_size: [body])
+
+
 @patch("requests.get")
 def test_download_png(mock_get, tmp_path):
-    mock_get.return_value = MagicMock(status_code=200, content=b"test content")
+    png = _png_bytes()
+    mock_get.return_value = _response(png)
 
     output_path = tmp_path / "test_download.png"
     download_png("https://example.com/test.png", output_path)
 
     assert os.path.exists(output_path)
-    assert output_path.read_bytes() == b"test content"
+    assert output_path.read_bytes() == png
+
+
+@patch("requests.get")
+def test_download_png_rejects_non_images(mock_get, tmp_path):
+    """A link that returns a web page (or anything else) must not be saved."""
+    mock_get.return_value = _response(b"<html>not an image</html>")
+    output_path = tmp_path / "art.png"
+
+    with pytest.raises(RuntimeError, match="valid image"):
+        download_png("https://example.com/art.png", output_path)
+    assert not output_path.exists()
+
+
+@patch("requests.get")
+def test_download_png_caps_the_size(mock_get, tmp_path, monkeypatch):
+    import solid_maker as sm
+
+    monkeypatch.setattr(sm, "MAX_ART_DOWNLOAD_BYTES", 10)
+    mock_get.return_value = _response(b"x" * 11)
+    output_path = tmp_path / "art.png"
+
+    with pytest.raises(RuntimeError, match="refusing"):
+        download_png("https://example.com/huge.png", output_path)
+    assert not output_path.exists()
+
+
+@patch("requests.get")
+def test_download_png_only_fetches_http(mock_get, tmp_path):
+    with pytest.raises(RuntimeError, match="non-http"):
+        download_png("file:///etc/passwd", tmp_path / "art.png")
+    mock_get.assert_not_called()
+
+
+def test_scad_text_cannot_break_out_of_its_string():
+    """A quote in a role name must not turn the rest into OpenSCAD code."""
+    from solid import scad_render
+
+    import solid_maker as sm
+
+    rendered = scad_render(sm.scad_text('A"); import("secret.stl'))
+    assert 'text = "A\\"); import(\\"secret.stl"' in rendered
+    assert "\nimport(" not in rendered and '; import("' not in rendered
+
+
+def test_scad_text_leaves_ordinary_names_unchanged():
+    """Escaping must not change normal names, or every cached file rebuilds."""
+    from solid import scad_render, text
+
+    import solid_maker as sm
+
+    for name in ("Fortune Teller", "Lil' Monsta", "Pit-Hag"):
+        assert scad_render(sm.scad_text(name, size=5)) == scad_render(
+            text(name, size=5)
+        )
 
 
 # ---------------------------------------------------------------- text

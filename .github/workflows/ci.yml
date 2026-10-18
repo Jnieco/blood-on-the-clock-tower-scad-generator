@@ -6,6 +6,11 @@ on:
   pull_request:
     branches: [main]
 
+# CI only reads the code. A read-only token means a compromised dependency or
+# action running here cannot push to the repo or edit releases.
+permissions:
+  contents: read
+
 jobs:
   test:
     name: test (${{ matrix.os }})
